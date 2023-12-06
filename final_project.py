@@ -28,7 +28,7 @@ if __name__=='__main__':
 		It enables staff to make informed decisions while understanding data better and most importantly identify potential harmful patterns. \
 		To achieve this goal in this dashboard, we will use UCI Air Quality data to demonstrate key insights and forecasts.")
 
-	path = '/home/builder/Downloads/CMSE/CMSE830_FinalProject/AirQualityUCI_processed.csv'
+	path = 'AirQualityUCI_processed.csv'
 	months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
 				'August', 'September', 'October', 'November', 'December']
 
