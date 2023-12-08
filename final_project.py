@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.figure_factory as ff
 from sklearn import linear_model, preprocessing
-from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, ExtraTreesRegressor
 from sklearn.cluster import KMeans
 from skforecast.ForecasterAutoreg import ForecasterAutoreg
 from sklearn.decomposition import PCA
@@ -32,10 +32,11 @@ if __name__=='__main__':
 	months = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
 				'August', 'September', 'October', 'November', 'December']
 
-	models_options = ['Random Forest','Gradient Boosting',
+	models_options = ['Random Forest','Extra Trees Regressor',
 						'Fastest','Most Accurate']
 
 	model_type = st.sidebar.selectbox('Select method for forecasting: ', models_options)
+	
 	if model_type == 'Random Forest':
 		forecaster = ForecasterAutoreg(
 	                regressor = RandomForestRegressor(random_state=123),
@@ -46,6 +47,18 @@ if __name__=='__main__':
 	                regressor = RandomForestRegressor(random_state=123),
 	                lags = 6
 	             )
+	
+	elif model_type == 'Extra Trees Regressor':
+		forecaster = ForecasterAutoreg(
+	                regressor = ExtraTreesRegressor(random_state=123),
+	                lags = 24
+	             )
+
+		forecaster_lt = ForecasterAutoreg(
+	                regressor = ExtraTreesRegressor(random_state=123),
+	                lags = 6
+	             )
+
 	elif model_type == 'Fastest':
 		
 		forecaster = ForecasterAutoreg(
@@ -57,6 +70,7 @@ if __name__=='__main__':
 	                regressor = linear_model.LinearRegression(),
 	                lags = 6
 	             )
+	
 	elif model_type == 'Most Accurate':
 
 		forecaster = ForecasterAutoreg(
@@ -71,22 +85,22 @@ if __name__=='__main__':
 
 	df = pd.read_csv(path, sep=';', engine='python')
 	df.dropna(how='all',axis=0, inplace=True)
-
+	
 	feature_options = df.columns[2:]
 	feature_type = st.sidebar.selectbox("Select feature for study: ", feature_options)
-	
 	df['Month'] = df['Date']
 	df['Month'] = df['Month'].apply(lambda x: months[int(float(str(x).split('/')[1])) - 1])
 	df['Date'] = pd.to_datetime(df['Date'], dayfirst=True)
 	
-	df[feature_type] = df[feature_type][df[feature_type] != -200] 
-	df[feature_type][df[feature_type].isna()] = df[feature_type].mean()
-	
+	for ft_typ in feature_options:
+
+		df[ft_typ] = df[ft_typ][df[ft_typ] != -200] 
+		df[ft_typ][df[ft_typ].isna()] = df[ft_typ].mean()
 	
 	# Trend
 
 	st.subheader("Quarterly trend of air quality")
-	st.write("Proportion and trend of constituents of air show if there exists are right air quality or not.")
+	st.write("Proportion and trend of constituents of air show if air quality is as per standard or not.")
 
 	tab1, tab2, tab3, tab4 = st.tabs(["1st quarter trend (2004)", "2nd quarter trend (2004)", "3rd quarter trend (2004)", "4th quarter trend (2004)"])
 	grouped_data = df.groupby('Month')[feature_type].mean().reset_index()
@@ -126,14 +140,15 @@ if __name__=='__main__':
 
 	window = st.sidebar.slider('Number of points to be considered for short-term forecast', 50, 5000, 1000)
 	
-	forecaster.fit(y=df[feature_type].iloc[-window:])
+	forecaster.fit(y=df[feature_type].iloc[:window,])
 
 	
 	with tab1:
 		
 		steps = 25
 		predictions = forecaster.predict(steps=steps)
-		
+		actual_vals = df[feature_type].iloc[window : window + steps,]
+		st.caption("MAE: {}".format(np.mean(np.absolute(predictions.to_numpy() - actual_vals.to_numpy()))))
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
 		tmp_df['Forecast'] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/5/2005', freq='H')
@@ -144,7 +159,8 @@ if __name__=='__main__':
 
 		steps = 49
 		predictions = forecaster.predict(steps=steps)
-		
+		actual_vals = df[feature_type].iloc[window : window + steps,]
+		st.caption("MAE: {}".format(np.mean(np.absolute(predictions.to_numpy() - actual_vals.to_numpy()))))
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
 		tmp_df['Forecast'] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/6/2005', freq='H')
@@ -155,7 +171,8 @@ if __name__=='__main__':
 
 		steps = 73
 		predictions = forecaster.predict(steps=steps)
-		
+		actual_vals = df[feature_type].iloc[window : window + steps,]
+		st.caption("MAE: {}".format(np.mean(np.absolute(predictions.to_numpy() - actual_vals.to_numpy()))))
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
 		tmp_df['Forecast'] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/7/2005', freq='H')
@@ -166,7 +183,7 @@ if __name__=='__main__':
 	# Longterm Forecast
 
 	st.subheader("Long-term Forecast")
-	st.write("Long-term forecasts show long lasting effects and trends of different gases and constituents present in Air.")
+	st.write("Long-term forecasts show long lasting effects and trends of different gases and constituents present in air.")
 
 	forecaster_lt.fit(y=grouped_data[feature_type][[4,3,7,0, 8, 6, 5, 1, 11, 10, 9, 2]])
 
@@ -259,7 +276,7 @@ if __name__=='__main__':
 	kmean_clf = KMeans(n_clusters)
 	trans_k_arr = kmean_clf.fit_transform(trans_arr)
 	
-	kmeans_ys = st.sidebar.selectbox("Choose Y-axis feature for K-means analysis: ", feature_options)
+	kmeans_ys = st.sidebar.selectbox("Choose Y-axis feature for box plot Cluster analysis: ", feature_options)
 
 	plt.clf()
 	fig3 = sns.boxplot(x = kmean_clf.labels_, y = df[kmeans_ys])
@@ -276,3 +293,22 @@ if __name__=='__main__':
 		st.plotly_chart(fig2)
 	else:
 		st.caption("Higher dimensions cannot be displayed!")
+
+	st.subheader("Conclusion")
+	st.write("In this dashboard, existing trends, short-term, long-term forecasts and cluster analysis of air quality enables environmentalists, analysts \
+			and scientists to analyse data and make decisions or policies to improve air quality. It also enables them to detect hazardous \
+			patterns in a timely manner.")
+
+
+	if 'button' not in st.session_state:
+	    st.session_state.button = False
+
+	def click_button():
+	    st.session_state.button = not st.session_state.button
+
+	st.button('Bio', on_click=click_button)
+
+	if st.session_state.button:
+	    # The message and nested widget will remain on the page
+	    st.write('Hi there! Muhammad Haroon here. I like to run and read. I also like to study datasets to figure out how things work. \
+	    		I prefer to work on impactful and challenging problems. Passionate about mathematics and self-supervised learning.')
