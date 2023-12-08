@@ -83,9 +83,14 @@ if __name__=='__main__':
 	                lags = 6
 	             )
 
-	df = pd.read_csv(path, sep=';', engine='python')
+	df = pd.read_csv(path, sep=';', engine='python', usecols = ['Date', 'Time', 'CO(GT)', 'PT08.S1(CO)', 'NMHC(GT)', 'C6H6(GT)',
+       'PT08.S2(NMHC)', 'NOx(GT)', 'PT08.S3(NOx)', 'NO2(GT)', 'PT08.S4(NO2)',
+       'PT08.S5(O3)', 'T', 'RH', 'AH'])
+
 	df.dropna(how='all',axis=0, inplace=True)
-	
+	df.rename(columns={'CO(GT)': 'CO(GT)(mg/m^3)', 'PT08.S1(CO)': 'PT08.S1(CO)(microg/m^3)', 'C6H6(GT)': 'C6H6(GT)(microg/m^3)',
+    	'NOx(GT)':'NOx(GT)(ppb)', 'NO2(GT)':'NO2(GT)(microg/m^3)', 'T': 'T (C)', 'RH': 'RH %'}, inplace=True)
+	print(df.head())
 	feature_options = df.columns[2:]
 	feature_type = st.sidebar.selectbox("Select feature for study: ", feature_options)
 	df['Month'] = df['Date']
@@ -150,10 +155,10 @@ if __name__=='__main__':
 		actual_vals = df[feature_type].iloc[window : window + steps,]
 		st.caption("MAE: {}".format(np.mean(np.absolute(predictions.to_numpy() - actual_vals.to_numpy()))))
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
-		tmp_df['Forecast'] = predictions
+		tmp_df['{}_Forecast'.format(feature_type)] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/5/2005', freq='H')
 		
-		st.line_chart(data=tmp_df, x ='Time', y='Forecast')
+		st.line_chart(data=tmp_df, x ='Time', y='{}_Forecast'.format(feature_type))
 
 	with tab2:
 
@@ -162,10 +167,10 @@ if __name__=='__main__':
 		actual_vals = df[feature_type].iloc[window : window + steps,]
 		st.caption("MAE: {}".format(np.mean(np.absolute(predictions.to_numpy() - actual_vals.to_numpy()))))
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
-		tmp_df['Forecast'] = predictions
+		tmp_df['{}_Forecast'.format(feature_type)] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/6/2005', freq='H')
 		
-		st.line_chart(data=tmp_df, x ='Time', y='Forecast')
+		st.line_chart(data=tmp_df, x ='Time', y='{}_Forecast'.format(feature_type))
 
 	with tab3:
 
@@ -174,10 +179,10 @@ if __name__=='__main__':
 		actual_vals = df[feature_type].iloc[window : window + steps,]
 		st.caption("MAE: {}".format(np.mean(np.absolute(predictions.to_numpy() - actual_vals.to_numpy()))))
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
-		tmp_df['Forecast'] = predictions
+		tmp_df['{}_Forecast'.format(feature_type)] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/7/2005', freq='H')
 		
-		st.line_chart(data=tmp_df, x ='Time', y='Forecast')
+		st.line_chart(data=tmp_df, x ='Time', y='{}_Forecast'.format(feature_type))
 
 
 	# Longterm Forecast
@@ -195,10 +200,10 @@ if __name__=='__main__':
 		predictions = forecaster_lt.predict(steps=steps)
 		
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
-		tmp_df['Forecast'] = predictions
+		tmp_df['{}_Forecast'.format(feature_type)] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='7/4/2005', freq='M')
 		
-		st.line_chart(data=tmp_df, x ='Time', y='Forecast')
+		st.line_chart(data=tmp_df, x ='Time', y='{}_Forecast'.format(feature_type))
 
 	with tab2:
 
@@ -206,10 +211,10 @@ if __name__=='__main__':
 		predictions = forecaster_lt.predict(steps=steps)
 		
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
-		tmp_df['Forecast'] = predictions
+		tmp_df['{}_Forecast'.format(feature_type)] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='10/6/2005', freq='M')
 		
-		st.line_chart(data=tmp_df, x ='Time', y='Forecast')
+		st.line_chart(data=tmp_df, x ='Time', y='{}_Forecast'.format(feature_type))
 
 	with tab3:
 
@@ -217,10 +222,10 @@ if __name__=='__main__':
 		predictions = forecaster_lt.predict(steps=steps)
 		
 		tmp_df = pd.DataFrame({}, columns=['date', 'preds'])
-		tmp_df['Forecast'] = predictions
+		tmp_df['{}_Forecast'.format(feature_type)] = predictions
 		tmp_df['Time'] = pd.date_range(start='4/4/2005', end='4/7/2006', freq='M')
 		
-		st.line_chart(data=tmp_df, x ='Time', y='Forecast')
+		st.line_chart(data=tmp_df, x ='Time', y='{}_Forecast'.format(feature_type))
 
 	st.subheader("Principal Components Analysis")
 	st.write("Principtal components analysis allows us to track patterns with high variance and it also allows us to visualize high dimensional data.")
@@ -270,6 +275,9 @@ if __name__=='__main__':
 			score.append(silhouette_score(trans_arr, model.labels_, metric='euclidean'))
 		plt.clf()
 		fig4 = sns.lineplot(x = K, y = score)
+		plt.xlabel("Number of Clusters")
+		plt.ylabel("Silhouette Score")
+		plt.title("Elbow Method")
 		st.pyplot(fig4.get_figure())
 
 
@@ -280,6 +288,8 @@ if __name__=='__main__':
 
 	plt.clf()
 	fig3 = sns.boxplot(x = kmean_clf.labels_, y = df[kmeans_ys])
+	plt.xlabel("Cluster Labels")
+	plt.title("Feature distribution of each cluster")
 	st.pyplot(fig3.get_figure())
 
 	st.caption("Clustered visualization of principal components.")
